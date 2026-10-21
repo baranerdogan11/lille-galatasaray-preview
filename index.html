@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lille × Galatasaray — Preview</title>
+    <meta
+      name="description"
+      content="Lille v Galatasaray, Champions League matchday 3: both seasons so far in passes and shots, and how the two sides match up."
+    />
+    <link rel="icon" type="image/svg+xml" href="./public/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Rokkitt:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles/index.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.176.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.176.0/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module" src="./scripts/index.js"></script>
+  </head>
+  <body>
+    <canvas class="canvas"></canvas>
+    <div class="labels" aria-hidden="true"></div>
+    <div class="vignette" aria-hidden="true"></div>
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="masthead">
+      <a class="brand" href="#" data-brand>
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-name">Match Preview</span>
+      </a>
+      <button class="back-button" type="button" data-back hidden>
+        <span aria-hidden="true">←</span> Back
+      </button>
+      <h1 class="masthead-team" data-reveal>
+        <img class="masthead-crest" src="./public/logos/LIL.png" alt="" />
+        <span class="masthead-name" data-home-name>Lille</span>
+        <span class="masthead-x">×</span>
+        <img class="masthead-crest" src="./public/logos/GAL.png" alt="" />
+        <span class="masthead-name" data-away-name>Galatasaray</span>
+      </h1>
+      <p class="masthead-sub" data-reveal data-fixture-sub>—</p>
+    </header>
+
+    <aside class="stats" data-reveal>
+      <div class="stat"><span class="stat-label" data-stat-label="a">Matches</span><span class="stat-value" data-stat="a">—</span></div>
+      <div class="stat"><span class="stat-label" data-stat-label="b">xG for</span><span class="stat-value" data-stat="b">—</span></div>
+      <div class="stat"><span class="stat-label" data-stat-label="c">xG against</span><span class="stat-value" data-stat="c">—</span></div>
+      <div class="stat"><span class="stat-label" data-stat-label="d">Possession</span><span class="stat-value" data-stat="d">—</span></div>
+    </aside>
+
+    <!-- Control rail — bottom-left -->
+    <section class="rail" data-reveal>
+      <div class="control">
+        <span class="control-label">Lens</span>
+        <div class="segmented" role="tablist" data-seg="lens">
+          <button type="button" role="tab" data-value="network" class="current">Passing network</button>
+          <button type="button" role="tab" data-value="shots">Shot map</button>
+          <button type="button" role="tab" data-value="matchup">Head-to-head</button>
+        </div>
+      </div>
+      <div class="control" data-control="team">
+        <span class="control-label">Team</span>
+        <div class="segmented" role="tablist" data-seg="team">
+          <button type="button" role="tab" data-value="LIL" class="current"><img src="./public/logos/LIL.png" alt="" />Lille</button>
+          <button type="button" role="tab" data-value="GAL"><img src="./public/logos/GAL.png" alt="" />Galatasaray</button>
+        </div>
+      </div>
+      <div class="control" data-control="comp">
+        <span class="control-label">Competition</span>
+        <div class="segmented" role="tablist" data-seg="comp">
+          <button type="button" role="tab" data-value="all" class="current">All</button>
+          <button type="button" role="tab" data-value="ucl">Champions League</button>
+          <button type="button" role="tab" data-value="league">League</button>
+        </div>
+      </div>
+      <div class="control" data-control="shots" hidden>
+        <span class="control-label">Shots</span>
+        <div class="segmented" role="tablist" data-seg="shots">
+          <button type="button" role="tab" data-value="for" class="current">Taken</button>
+          <button type="button" role="tab" data-value="against">Conceded</button>
+          <button type="button" role="tab" data-value="both">Both</button>
+        </div>
+      </div>
+      <div class="control" data-control="matchup" hidden>
+        <span class="control-label">On the pitch</span>
+        <div class="segmented" role="tablist" data-seg="matchup">
+          <button type="button" role="tab" data-value="LIL" class="current">Lille attack · Gala defence</button>
+          <button type="button" role="tab" data-value="GAL">Gala attack · Lille defence</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="sidebar" data-reveal></aside>
+    <button class="sidebar-toggle" type="button" data-sidebar-toggle aria-expanded="false">Stats</button>
+
+    <!-- Head-to-head panel (right) -->
+    <aside class="compare-panel" hidden>
+      <header class="compare-panel-header">
+        <h2 class="compare-panel-title">How they compare</h2>
+        <p class="compare-panel-sub" data-compare-sub>—</p>
+        <div class="compare-legend">
+          <span><i class="dot dot-lil"></i>Lille</span>
+          <span><i class="dot dot-gal"></i>Galatasaray</span>
+          <span class="compare-legend-note">dots sit on a percentile scale across every team performance in these 19 matches</span>
+        </div>
+      </header>
+      <div class="compare-panel-list" data-compare-list></div>
+    </aside>
+
+    <div class="tooltip" data-tooltip hidden></div>
+    <div class="legend" data-legend></div>
+
+    <div class="load-error" role="alert">
+      <p class="load-error-msg">Couldn&rsquo;t load the preview data.</p>
+      <button class="load-error-retry" type="button" data-retry>Retry</button>
+    </div>
+
+    <div class="hint" role="note" data-hint>
+      Drag to orbit the pitch. Click a player to isolate their passing links; click a second player for the pair.
+    </div>
+
+    <dialog class="info-modal">
+      <button class="info-modal-close" type="button" data-modal-close aria-label="Close">×</button>
+      <h2 class="info-modal-title" data-modal-title>—</h2>
+      <p class="info-modal-def" data-modal-def>—</p>
+      <div class="info-modal-divider">For this match</div>
+      <p class="info-modal-basketball" data-modal-ctx>—</p>
+    </dialog>
+
+    <footer class="meta" data-reveal>
+      <span data-meta-caption>Opta event data via WhoScored · xG is a simple distance/angle model</span>
+    </footer>
+  </body>
+</html>
