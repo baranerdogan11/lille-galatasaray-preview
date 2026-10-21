@@ -1,12 +1,17 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import Label from "./Label.js";
 
-/* Cream-paper palette shared with index.css */
-const BG = new THREE.Color("#f5f1e8");
-const TURF = new THREE.Color("#ede6d5");
-const INK = new THREE.Color("#1a1a1a");
-const MUTED = new THREE.Color("#9a9484");
+/* Floodlit palette shared with index.css: dark ground, luminous marks */
+const BG = new THREE.Color("#0b0f1a");
+const TURF = new THREE.Color("#141c2e");
+const INK = new THREE.Color("#e5e7eb");   // marks and "strong" edges are light now
+const MUTED = new THREE.Color("#6b7280");
+const BLOCKED = new THREE.Color("#374151");
 const L = 10.5; // pitch length in world units (1 unit = 10 m)
 const W = 6.8;
 const UP = new THREE.Vector3(0, 1, 0);
@@ -34,6 +39,12 @@ export default class Pitch {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(w, h, false);
     this.renderer.setClearColor(BG, 1);
+    // Light bloom gives dots and tubes a floodlit glow without washing the UI (HTML).
+    this.composer = new EffectComposer(this.renderer);
+    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(w || 1, h || 1), 0.32, 0.55, 0.86);
+    this.composer.addPass(this.bloom);
+    this.composer.addPass(new OutputPass());
 
     this.controls = new OrbitControls(this.camera, this.canvas);
     this.controls.enableDamping = true;
@@ -45,13 +56,12 @@ export default class Pitch {
     this.controls.minPolarAngle = 0.12;
     this.controls.maxPolarAngle = 1.25;
 
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-    const key = new THREE.DirectionalLight(0xfff4dc, 1.0);
-    key.position.set(-6, 12, 8);
-    this.scene.add(key);
-    const fill = new THREE.DirectionalLight(0xd9e4f2, 0.3);
-    fill.position.set(8, 4, -6);
-    this.scene.add(fill);
+    this.scene.add(new THREE.AmbientLight(0xc7d2fe, 0.55));
+    for (const [x, z] of [[-7, 6], [7, 6], [-7, -6], [7, -6]]) {
+      const lamp = new THREE.DirectionalLight(0xf8fafc, 0.55);
+      lamp.position.set(x, 14, z);
+      this.scene.add(lamp);
+    }
 
     this.root = new THREE.Group();
     this.scene.add(this.root);
@@ -98,12 +108,19 @@ export default class Pitch {
       new THREE.PlaneGeometry(L + 0.6, W + 0.6),
       new THREE.MeshBasicMaterial({ color: TURF })
     );
+    // mowing stripes: alternating slightly lighter bands across the width
+    for (let i = 0; i < 12; i += 2) {
+      const band = new THREE.Mesh(new THREE.PlaneGeometry(L / 12, W), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.025 }));
+      band.rotation.x = -Math.PI / 2;
+      band.position.set(-L / 2 + (i + 0.5) * (L / 12), 0.001, 0);
+      this.root.add(band);
+    }
     turf.rotation.x = -Math.PI / 2;
     turf.position.y = -0.002;
     this.root.add(turf);
 
     const m = (metres) => metres / 10;
-    const mat = new THREE.LineBasicMaterial({ color: INK, transparent: true, opacity: 0.5 });
+    const mat = new THREE.LineBasicMaterial({ color: INK, transparent: true, opacity: 0.42 });
     const lines = [];
     const seg = (x1, z1, x2, z2) => lines.push(new THREE.Vector3(x1, 0, z1), new THREE.Vector3(x2, 0, z2));
     const rect = (x1, z1, x2, z2) => {
@@ -148,7 +165,7 @@ export default class Pitch {
       g(gx, 0, -hp, gx, gh, -hp); g(gx, 0, hp, gx, gh, hp); g(gx, gh, -hp, gx, gh, hp);
       g(gx, gh, -hp, gx + depth, 0, -hp); g(gx, gh, hp, gx + depth, 0, hp); g(gx + depth, 0, -hp, gx + depth, 0, hp);
     }
-    const gm = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(gl), new THREE.LineBasicMaterial({ color: INK, transparent: true, opacity: 0.75 }));
+    const gm = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(gl), new THREE.LineBasicMaterial({ color: INK, transparent: true, opacity: 0.9 }));
     this.root.add(gm);
   }
 
@@ -160,6 +177,7 @@ export default class Pitch {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h, false);
+    this.composer?.setSize(w, h);
     // Portrait phones: turn the pitch so play runs top→bottom.
     const portrait = w < h;
     const rot = portrait ? -Math.PI / 2 : 0;
@@ -231,7 +249,7 @@ export default class Pitch {
     const maxMin = Math.max(...nodes.map((n) => n.minutes), 1);
     nodes.forEach((node, i) => {
       const s = 0.9 + 1.5 * Math.sqrt(node.minutes / maxMin);
-      const mat = new THREE.MeshToonMaterial({ color: this._accent, gradientMap: this._toon, transparent: true, opacity: 1 });
+      const mat = new THREE.MeshStandardMaterial({ color: this._accent, emissive: this._accent, emissiveIntensity: 0.55, roughness: 0.4, metalness: 0.1, transparent: true, opacity: 1 });
       const mesh = new THREE.Mesh(this._sphere, mat);
       const p = toWorld(node.x, node.y);
       mesh.position.set(p.x, 0.1 * s, p.z);
@@ -249,7 +267,8 @@ export default class Pitch {
       const ma = this.nodeById.get(a), mb = this.nodeById.get(b);
       if (!ma || !mb) continue;
       const t = count / maxC;
-      const color = INK.clone().lerp(BG, 0.6 * (1 - Math.sqrt(t)));
+      // strong links glow near-white, weak ones sink toward the turf
+      const color = INK.clone().lerp(TURF, 0.75 * (1 - Math.sqrt(t)));
       const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0 });
       const mesh = new THREE.Mesh(this._cyl, mat);
       // Both directions of a pair get a small sideways offset so they don't overlap.
@@ -276,8 +295,8 @@ export default class Pitch {
     const place = (shots, mirror, tint, delayBase) => {
       shots.forEach((s, i) => {
         const r = 0.035 + 0.24 * Math.sqrt(s.xg);
-        const col = s.outcome === "goal" ? tint : s.outcome === "saved" ? INK : s.outcome === "blocked" ? BG.clone().lerp(INK, 0.35) : MUTED;
-        const mat = new THREE.MeshToonMaterial({ color: col, gradientMap: this._toon, transparent: true, opacity: s.outcome === "goal" ? 1 : 0.85 });
+        const col = s.outcome === "goal" ? tint : s.outcome === "saved" ? INK : s.outcome === "blocked" ? BLOCKED : MUTED;
+        const mat = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: s.outcome === "goal" ? 0.8 : 0.12, roughness: 0.5, transparent: true, opacity: s.outcome === "goal" ? 1 : 0.8 });
         const mesh = new THREE.Mesh(this._sphere, mat);
         const p = toWorld(s.x, s.y, mirror);
         mesh.position.set(p.x, r, p.z);
@@ -295,7 +314,7 @@ export default class Pitch {
       });
     };
     if (mode === "for" || mode === "both") place(shotsFor, false, this._accent, 100);
-    if (mode === "against" || mode === "both") place(shotsAgainst, true, INK.clone().lerp(this._accent, 0.15), 100);
+    if (mode === "against" || mode === "both") place(shotsAgainst, true, INK.clone().lerp(this._accent, 0.25), 100);
   }
 
   /** Attack-vs-defence overlay: attacker's shots (filled), defender's conceded shots mirrored
@@ -312,7 +331,7 @@ export default class Pitch {
       for (let gy = 0; gy < 5; gy++) {
         const v = defendGrid[gx][gy] / maxG;
         if (v <= 0) continue;
-        const tile = new THREE.Mesh(new THREE.PlaneGeometry(tw - 0.03, th - 0.03), new THREE.MeshBasicMaterial({ color: defend, transparent: true, opacity: 0.03 + 0.3 * v * v }));
+        const tile = new THREE.Mesh(new THREE.PlaneGeometry(tw - 0.03, th - 0.03), new THREE.MeshBasicMaterial({ color: defend, transparent: true, opacity: 0.04 + 0.4 * v * v }));
         tile.rotation.x = -Math.PI / 2;
         const mx = 5 - gx, my = 4 - gy; // mirror
         tile.position.set(-L / 2 + (mx + 0.5) * tw, 0.006, W / 2 - (my + 0.5) * th);
@@ -321,7 +340,7 @@ export default class Pitch {
     }
     attackShots.forEach((s, i) => {
       const r = 0.035 + 0.24 * Math.sqrt(s.xg);
-      const mat = new THREE.MeshToonMaterial({ color: this._accent, gradientMap: this._toon, transparent: true, opacity: s.outcome === "goal" ? 1 : 0.55 });
+      const mat = new THREE.MeshStandardMaterial({ color: this._accent, emissive: this._accent, emissiveIntensity: 0.6, roughness: 0.5, transparent: true, opacity: s.outcome === "goal" ? 1 : 0.6 });
       const mesh = new THREE.Mesh(this._sphere, mat);
       const p = toWorld(s.x, s.y);
       mesh.position.set(p.x, r, p.z);
@@ -389,18 +408,18 @@ export default class Pitch {
       const u = pos.getX(i) / L + 0.5, v = 0.5 - pos.getZ(i) / W;
       const h = height(u, v);
       pos.setY(i, h * H);
-      // cream → accent (mid) → ink-tinted accent (peaks)
-      if (h < 0.5) c.copy(TURF).lerp(accent, h * 2);
-      else c.copy(accent).lerp(INK, (h - 0.5) * 0.7);
+      // turf → accent (mid) → near-white peaks
+      if (h < 0.55) c.copy(TURF).lerp(accent, h / 0.55);
+      else c.copy(accent).lerp(INK, (h - 0.55) / 0.45 * 0.8);
       colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
     }
     geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     geo.computeVertexNormals();
-    const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true }));
+    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0.05 }));
     mesh.position.y = 0.004;
     this.layer.add(mesh);
     // contour-like wire overlay at a coarser pitch for the printed-map feel
-    const wire = new THREE.Mesh(new THREE.PlaneGeometry(L, W, 36, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: INK, wireframe: true, transparent: true, opacity: 0.08 }));
+    const wire = new THREE.Mesh(new THREE.PlaneGeometry(L, W, 36, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: INK, wireframe: true, transparent: true, opacity: 0.07 }));
     const wp = wire.geometry.attributes.position;
     for (let i = 0; i < wp.count; i++) wp.setY(i, height(wp.getX(i) / L + 0.5, 0.5 - wp.getZ(i) / W) * H + 0.012);
     this.layer.add(wire);
@@ -416,7 +435,7 @@ export default class Pitch {
         }
       }
     }
-    this.layer.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(draped), new THREE.LineBasicMaterial({ color: INK, transparent: true, opacity: 0.55 })));
+    this.layer.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(draped), new THREE.LineBasicMaterial({ color: INK, transparent: true, opacity: 0.6 })));
     // rise-in: scale the layer's height from flat
     this.layer.scale.y = 0.001;
     this._tween(this.layer.scale, { y: 1 }, 900, easeOut, 80, "terrain:rise");
@@ -611,9 +630,9 @@ export default class Pitch {
       const { a, b, baseColor } = e.userData;
       const keep = keepEdge(a, b);
       let color = baseColor;
-      if (keep && this.mode !== "default") color = a === pinId || a === pinBId ? this._accent : this._accent.clone().lerp(INK, 0.55);
+      if (keep && this.mode !== "default") color = a === pinId || a === pinBId ? this._accent : this._accent.clone().lerp(INK, 0.6);
       e.material.color.copy(color);
-      this._tween(e.material, { opacity: keep ? 1 : 0.06 }, 280, easeOut, 0, `eo:${a}:${b}`);
+      this._tween(e.material, { opacity: keep ? 1 : 0.05 }, 280, easeOut, 0, `eo:${a}:${b}`);
     }
     this.label.setStates(states);
   }
@@ -677,7 +696,7 @@ export default class Pitch {
     this._runTweens();
     this._syncEdges();
     this.controls.update();
-    this.renderer.render(this.scene, this.camera);
+    this.composer.render();
     this.label.update();
   }
 }

@@ -3,10 +3,10 @@ import Pitch from "./Pitch.js";
 import Sidebar from "./Sidebar.js";
 
 const LENS_LEGEND = {
-  network: `<span><i style="background:var(--accent)"></i>player, size = minutes</span><span>tube = completed passes, thick end at the passer</span><span>attacking →</span>`,
-  shots: `<span><i style="background:var(--accent)"></i>goal</span><span><i style="background:#1a1a1a"></i>saved</span><span><i style="background:#9a9484"></i>missed</span><span>size = model xG · conceded shots on the left goal</span>`,
+  network: `<span><i style="background:var(--accent);color:var(--accent)"></i>player, size = minutes</span><span>tube = completed passes, thick end at the passer</span><span>attacking →</span>`,
+  shots: `<span><i style="background:var(--accent);color:var(--accent)"></i>goal</span><span><i style="background:#e5e7eb;color:#e5e7eb"></i>saved</span><span><i style="background:#6b7280;color:#6b7280"></i>missed</span><span>size = model xG · conceded shots on the left goal</span>`,
   territory: `<span>relief = where the team touches, defends or shoots · after three.js webgl_geometry_terrain</span><span>attacking →</span>`,
-  matchup: `<span><i style="background:var(--accent)"></i>attacker's shots</span><span>○ defender's conceded shots</span><span>shading = defensive actions</span>`,
+  matchup: `<span><i style="background:var(--accent);color:var(--accent)"></i>attacker's shots</span><span>○ defender's conceded shots</span><span>shading = defensive actions</span>`,
 };
 
 export default class App {

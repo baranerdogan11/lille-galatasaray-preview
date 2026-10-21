@@ -27,10 +27,10 @@ RAW = ROOT / "pipeline" / "raw" / "ws"
 OUT = ROOT / "public" / "data"
 
 TEAMS = {
-    607: {"code": "LIL", "name": "Lille", "full": "LOSC Lille", "color": "#C8102E", "secondary": "#1a1a1a",
+    607: {"code": "LIL", "name": "Lille", "full": "LOSC Lille", "color": "#FF4D5E", "secondary": "#ffffff",
           "league": "Ligue 1", "league_pos": 4, "league_pts": 14, "league_played": 7, "manager": "Davide Ancelotti",
           "ucl_pos": 33},
-    294: {"code": "GAL", "name": "Galatasaray", "full": "Galatasaray SK", "color": "#B8860B", "secondary": "#A90432",
+    294: {"code": "GAL", "name": "Galatasaray", "full": "Galatasaray SK", "color": "#FFB703", "secondary": "#A90432",
           "league": "Süper Lig", "league_pos": 1, "league_pts": 19, "league_played": 8, "manager": "Okan Buruk",
           "ucl_pos": 35},
 }

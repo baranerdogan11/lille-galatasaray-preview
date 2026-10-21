@@ -1,8 +1,10 @@
 # Lille × Galatasaray — Champions League preview
 
 A match preview for Lille v Galatasaray (UEFA Champions League 2026-27,
-league phase matchday 3, 21 October 2026) built in the same cream-paper,
-three.js style as the EuroLeague assist networks. Three lenses on one 3D pitch:
+league phase matchday 3, 21 October 2026). Built with three.js in a
+"floodlit" style: dark stadium ground, luminous pitch markings, a light bloom
+on the 3D marks, geometric sans type and translucent glass panels. Four
+lenses on one 3D pitch:
 
 - **Passing network** — each team's season so far (9 Lille matches, 10
   Galatasaray) as players at their average on-ball position, linked by
