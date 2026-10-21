@@ -10,6 +10,10 @@ three.js style as the EuroLeague assist networks. Three lenses on one 3D pitch:
   season line; click a second for the pair. Filter by competition.
 - **Shot map** — every shot taken (right goal) and conceded (mirrored to the
   left goal), sized by a simple distance/angle xG model, goals ringed.
+- **Territory** — after three.js's `webgl_geometry_terrain` example: the pitch
+  becomes a height-mapped relief of where the team touches the ball, makes
+  its defensive actions, or shoots (36×24 counts per match, Gaussian-smoothed,
+  vertex-coloured cream → club colour → ink, markings draped over the surface).
 - **Head-to-head** — Lille's attack overlaid on Galatasaray's defence (and
   the reverse): shots taken vs shots conceded on the same goal, plus the
   defender's defensive-action heat; a side panel compares 27 measures on a

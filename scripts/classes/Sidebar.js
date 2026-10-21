@@ -128,6 +128,32 @@ export default class Sidebar {
     this._render(html, "shots");
   }
 
+  renderTerritory(team, comp, surface) {
+    const d = this.app.data;
+    const f = d.filter(team.code, comp);
+    const grid = f.surfaces[surface];
+    // thirds and lanes from the 36×24 surface
+    const total = grid.flat().reduce((a, b) => a + b, 0) || 1;
+    const third = (lo, hi) => grid.slice(lo, hi).flat().reduce((a, b) => a + b, 0) / total;
+    const lane = (lo, hi) => grid.reduce((a, row) => a + row.slice(lo, hi).reduce((x, y) => x + y, 0), 0) / total;
+    const thirds = [["Own third", third(0, 12)], ["Middle third", third(12, 24)], ["Final third", third(24, 36)]];
+    const lanes = [["Right", lane(0, 8)], ["Centre", lane(8, 16)], ["Left", lane(16, 24)]];
+    const bar = ([k, p]) => `<div class="bar"><span>${esc(k)}</span><span class="bar-track"><span class="bar-fill" style="width:${(p * 100).toFixed(0)}%"></span></span><span>${(p * 100).toFixed(0)}%</span></div>`;
+    const title = { touches: "Where they have the ball", defence: "Where they defend", shots: "Where they shoot from" }[surface];
+    const cards = surface === "touches"
+      ? this.metricCard(team, comp, "field_tilt") + this.metricCard(team, comp, "possession")
+      : surface === "defence"
+        ? this.metricCard(team, comp, "ppda") + this.metricCard(team, comp, "high_turnovers")
+        : this.metricCard(team, comp, "xg_per_shot") + this.metricCard(team, comp, "shot_dist");
+    const html =
+      this.teamHead(team, comp) +
+      `<div class="metric-card"><div class="metric-head"><span class="metric-label">${esc(title)}</span></div>` +
+      `<div class="metric-sub" style="margin:.1rem 0 .35rem">${total.toFixed(0)} per match · attacking left → right</div>` +
+      `<div class="bars">${thirds.map(bar).join("")}</div><div class="bars" style="margin-top:.5rem">${lanes.map(bar).join("")}</div></div>` +
+      cards;
+    this._render(html, "territory");
+  }
+
   renderPlayer(team, comp, id) {
     const p = this.app.data.player(team.code, comp, id);
     if (!p) return;

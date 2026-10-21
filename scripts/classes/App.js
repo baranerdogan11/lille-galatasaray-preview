@@ -5,6 +5,7 @@ import Sidebar from "./Sidebar.js";
 const LENS_LEGEND = {
   network: `<span><i style="background:var(--accent)"></i>player, size = minutes</span><span>tube = completed passes, thick end at the passer</span><span>attacking →</span>`,
   shots: `<span><i style="background:var(--accent)"></i>goal</span><span><i style="background:#1a1a1a"></i>saved</span><span><i style="background:#9a9484"></i>missed</span><span>size = model xG · conceded shots on the left goal</span>`,
+  territory: `<span>relief = where the team touches, defends or shoots · after three.js webgl_geometry_terrain</span><span>attacking →</span>`,
   matchup: `<span><i style="background:var(--accent)"></i>attacker's shots</span><span>○ defender's conceded shots</span><span>shading = defensive actions</span>`,
 };
 
@@ -13,7 +14,7 @@ export default class App {
     this.data = new Data();
     this.pitch = new Pitch(this, ".canvas", ".labels");
     this.sidebar = new Sidebar(this, ".sidebar");
-    this.state = { lens: "network", team: "LIL", comp: "all", shots: "for", matchup: "LIL" };
+    this.state = { lens: "network", team: "LIL", comp: "all", shots: "for", matchup: "LIL", surface: "touches" };
     this._readHash();
     this._installControls();
     this._installChrome();
@@ -66,6 +67,9 @@ export default class App {
       if (s.lens === "network") {
         this.pitch.showNetwork(d.network(team.code, comp), team.color);
         this.sidebar.renderNetwork(team, comp);
+      } else if (s.lens === "territory") {
+        this.pitch.showTerrain(f.surfaces[s.surface], team.color, s.surface);
+        this.sidebar.renderTerritory(team, comp, s.surface);
       } else {
         this.pitch.showShots(d.shots(team.code, comp, "for"), d.shots(team.code, comp, "against"), s.shots, team.color, opp);
         this.sidebar.renderShots(team, comp, s.shots);
@@ -153,21 +157,23 @@ export default class App {
     }
     document.querySelector("[data-control='team']").hidden = s.lens === "matchup";
     document.querySelector("[data-control='shots']").hidden = s.lens !== "shots";
+    document.querySelector("[data-control='territory']").hidden = s.lens !== "territory";
     document.querySelector("[data-control='matchup']").hidden = s.lens !== "matchup";
   }
 
   _readHash() {
     const parts = location.hash.replace("#", "").split("/").filter(Boolean);
     const [lens, team, comp, extra] = parts;
-    if (["network", "shots", "matchup"].includes(lens)) this.state.lens = lens;
+    if (["network", "shots", "territory", "matchup"].includes(lens)) this.state.lens = lens;
     if (["LIL", "GAL"].includes(team)) { this.state.team = team; this.state.matchup = team; }
     if (["all", "ucl", "league"].includes(comp)) this.state.comp = comp;
     if (["for", "against", "both"].includes(extra)) this.state.shots = extra;
+    if (["touches", "defence", "shots"].includes(extra) && lens === "territory") this.state.surface = extra;
   }
 
   _writeHash() {
     const s = this.state;
-    const h = `#${s.lens}/${s.lens === "matchup" ? s.matchup : s.team}/${s.comp}${s.lens === "shots" ? `/${s.shots}` : ""}`;
+    const h = `#${s.lens}/${s.lens === "matchup" ? s.matchup : s.team}/${s.comp}${s.lens === "shots" ? `/${s.shots}` : s.lens === "territory" ? `/${s.surface}` : ""}`;
     if (location.hash !== h) history.replaceState(null, "", h);
   }
 

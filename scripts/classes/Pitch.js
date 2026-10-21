@@ -138,6 +138,7 @@ export default class Pitch {
     const mesh = new THREE.LineSegments(geom, mat);
     mesh.position.y = 0.003;
     this.root.add(mesh);
+    this._markings = lines; // kept so the territory lens can drape them over the relief
 
     // goal frames: posts + crossbar + net depth, as hairlines
     const gl = [];
@@ -339,6 +340,87 @@ export default class Pitch {
       this.layer.add(ring);
       this._interactive.push(ring);
     });
+  }
+
+  /**
+   * Territory relief — after three.js's webgl_geometry_terrain: a plane
+   * displaced by a height field. Here the height field is where the team
+   * touches the ball, defends, or shoots (36×24 counts per match),
+   * Gaussian-smoothed; vertex colours run cream → team colour → ink.
+   * The pitch markings are re-drawn draped over the surface.
+   */
+  showTerrain(surface, color, label) {
+    this.clear();
+    this.setAccent(color);
+    const GX = 36, GY = 24;
+    // Gaussian smoothing (σ ≈ 1.2 cells) so the relief reads as landscape, not a bar chart.
+    const k = [0.06, 0.24, 0.4, 0.24, 0.06];
+    const tmp = Array.from({ length: GX }, () => new Float32Array(GY));
+    const sm = Array.from({ length: GX }, () => new Float32Array(GY));
+    for (let x = 0; x < GX; x++) for (let y = 0; y < GY; y++) {
+      let v = 0;
+      for (let i = -2; i <= 2; i++) { const xx = Math.min(GX - 1, Math.max(0, x + i)); v += k[i + 2] * surface[xx][y]; }
+      tmp[x][y] = v;
+    }
+    let max = 0;
+    for (let x = 0; x < GX; x++) for (let y = 0; y < GY; y++) {
+      let v = 0;
+      for (let j = -2; j <= 2; j++) { const yy = Math.min(GY - 1, Math.max(0, y + j)); v += k[j + 2] * tmp[x][yy]; }
+      sm[x][y] = v; if (v > max) max = v;
+    }
+    max = max || 1;
+    const H = 1.35; // peak height in world units (13.5 m)
+    const height = (u, v) => {
+      // bilinear sample of the smoothed grid; u,v in [0,1] across the pitch
+      const fx = Math.min(GX - 1.001, Math.max(0, u * GX - 0.5)), fy = Math.min(GY - 1.001, Math.max(0, v * GY - 0.5));
+      const x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0;
+      const a = sm[x0][y0], b = sm[x0 + 1][y0], c = sm[x0][y0 + 1], d = sm[x0 + 1][y0 + 1];
+      const val = (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
+      // contrast stretch: everything under 20% of the peak reads as flat cream
+      return Math.pow(Math.max(0, val / max - 0.2) / 0.8, 0.85);
+    };
+    const SEG_X = 108, SEG_Y = 72;
+    const geo = new THREE.PlaneGeometry(L, W, SEG_X, SEG_Y);
+    geo.rotateX(-Math.PI / 2);
+    const pos = geo.attributes.position;
+    const colors = new Float32Array(pos.count * 3);
+    const accent = new THREE.Color(color), c = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) {
+      const u = pos.getX(i) / L + 0.5, v = 0.5 - pos.getZ(i) / W;
+      const h = height(u, v);
+      pos.setY(i, h * H);
+      // cream → accent (mid) → ink-tinted accent (peaks)
+      if (h < 0.5) c.copy(TURF).lerp(accent, h * 2);
+      else c.copy(accent).lerp(INK, (h - 0.5) * 0.7);
+      colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+    }
+    geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    geo.computeVertexNormals();
+    const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true }));
+    mesh.position.y = 0.004;
+    this.layer.add(mesh);
+    // contour-like wire overlay at a coarser pitch for the printed-map feel
+    const wire = new THREE.Mesh(new THREE.PlaneGeometry(L, W, 36, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: INK, wireframe: true, transparent: true, opacity: 0.08 }));
+    const wp = wire.geometry.attributes.position;
+    for (let i = 0; i < wp.count; i++) wp.setY(i, height(wp.getX(i) / L + 0.5, 0.5 - wp.getZ(i) / W) * H + 0.012);
+    this.layer.add(wire);
+    // drape the markings: subdivide each segment and lift it to the surface
+    const draped = [];
+    for (let i = 0; i < this._markings.length; i += 2) {
+      const a = this._markings[i], b = this._markings[i + 1];
+      const n = 8;
+      for (let j = 0; j < n; j++) {
+        for (const t of [j / n, (j + 1) / n]) {
+          const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
+          draped.push(new THREE.Vector3(x, height(x / L + 0.5, 0.5 - z / W) * H + 0.02, z));
+        }
+      }
+    }
+    this.layer.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(draped), new THREE.LineBasicMaterial({ color: INK, transparent: true, opacity: 0.55 })));
+    // rise-in: scale the layer's height from flat
+    this.layer.scale.y = 0.001;
+    this._tween(this.layer.scale, { y: 1 }, 900, easeOut, 80, "terrain:rise");
+    this._terrainLabel = label;
   }
 
   /* ── Interaction ─────────────────────────────────────────────── */

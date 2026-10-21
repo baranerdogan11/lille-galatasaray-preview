@@ -156,12 +156,18 @@ def analyse_match(d):
             "edges": Counter(), "prog_edges": Counter(),
             "player": defaultdict(lambda: Counter()), "player_pos": defaultdict(list),
             "touch_grid": np.zeros((6, 5)), "def_grid": np.zeros((6, 5)), "pass_origin": defaultdict(list),
+            "touch_fine": np.zeros((36, 24)), "def_fine": np.zeros((36, 24)), "shot_fine": np.zeros((36, 24)),
             "minutes": minutes[tid],
         }
 
     def grid_add(g, x, y):
         gx = min(5, int(x // (100 / 6)))
         gy = min(4, int(y // 20))
+        g[gx, gy] += 1
+
+    def fine_add(g, x, y):
+        gx = min(35, int(x / 100 * 36))
+        gy = min(23, int(y / 100 * 24))
         g[gx, gy] += 1
 
     n = len(events)
@@ -178,6 +184,7 @@ def analyse_match(d):
             p["player"][pid]["touches"] += 1
             p["player_pos"][pid].append((x, y))
             grid_add(p["touch_grid"], x, y)
+            fine_add(p["touch_fine"], x, y)
             if x >= 66.7:
                 p["touches_f3"] += 1
         if t == "Pass":
@@ -245,6 +252,7 @@ def analyse_match(d):
                 "big": q(e, "BigChance"), "assistedBy": assisted_by,
             }
             p["shots"].append(shot)
+            fine_add(p["shot_fine"], x, y)
             p["player"][pid]["shots"] += 1
             p["player"][pid]["xg"] += xg
             if shot["outcome"] == "goal":
@@ -261,6 +269,7 @@ def analyse_match(d):
                 if x is not None:
                     p["def_x"].append(x)
                     grid_add(p["def_grid"], x, y)
+                    fine_add(p["def_fine"], x, y)
                     if t in ("Tackle", "Interception", "Challenge", "Foul") and x >= 40:
                         p["pressing_actions"] += 1
                     if t in ("BallRecovery", "Interception", "Tackle") and x >= 60:
@@ -492,6 +501,11 @@ def aggregate(perfs, tid, team_info, all_observations):
         "shots": {"for": shots_for},
         "touchGrid": np.sum([p["raw"]["touch_grid"] for p in perfs], axis=0).round().astype(int).tolist(),
         "defGrid": np.sum([p["raw"]["def_grid"] for p in perfs], axis=0).round().astype(int).tolist(),
+        # 36×24 surfaces, per match, for the territory relief lens
+        "surfaces": {
+            k: (np.sum([p["raw"][src] for p in perfs], axis=0) / max(1, n)).round(3).tolist()
+            for k, src in (("touches", "touch_fine"), ("defence", "def_fine"), ("shots", "shot_fine"))
+        },
     }
 
 
