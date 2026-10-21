@@ -311,7 +311,7 @@ export default class Pitch {
       for (let gy = 0; gy < 5; gy++) {
         const v = defendGrid[gx][gy] / maxG;
         if (v <= 0) continue;
-        const tile = new THREE.Mesh(new THREE.PlaneGeometry(tw - 0.03, th - 0.03), new THREE.MeshBasicMaterial({ color: defend, transparent: true, opacity: 0.04 + 0.36 * v }));
+        const tile = new THREE.Mesh(new THREE.PlaneGeometry(tw - 0.03, th - 0.03), new THREE.MeshBasicMaterial({ color: defend, transparent: true, opacity: 0.03 + 0.3 * v * v }));
         tile.rotation.x = -Math.PI / 2;
         const mx = 5 - gx, my = 4 - gy; // mirror
         tile.position.set(-L / 2 + (mx + 0.5) * tw, 0.006, W / 2 - (my + 0.5) * th);
